@@ -10,13 +10,11 @@ local MAX_SERVERS_FETCH = 100
 local PLACE_ID = game.PlaceId
 local LocalPlayer = Players.LocalPlayer
 
--- đọc trạng thái từ TeleportData (nếu có)
-local teleportData = TeleportService:GetLocalPlayerTeleportData()
-local autoHopEnabled = teleportData and teleportData.autoHopEnabled or false
-
--- lưu lịch sử server đã đi qua
-local visitedServers = {}
-visitedServers[tostring(game.JobId)] = true
+-- ========== TELEPORT DATA ==========
+local teleportData = TeleportService:GetLocalPlayerTeleportData() or {}
+local autoHopEnabled = teleportData.autoHopEnabled or false
+local visitedServers = teleportData.visitedServers or {}
+visitedServers[tostring(game.JobId)] = true -- đánh dấu server hiện tại đã đi
 
 -- ========== GUI ==========
 local ScreenGui = Instance.new("ScreenGui")
@@ -87,12 +85,19 @@ end
 local function hop(serverId)
     if not serverId then return end
     visitedServers[serverId] = true
+
+    -- truyền visitedServers và autoHopEnabled qua TeleportData
+    local teleportInfo = {
+        autoHopEnabled = autoHopEnabled,
+        visitedServers = visitedServers
+    }
+
     pcall(function()
         TeleportService:TeleportToPlaceInstance(
             PLACE_ID,
             serverId,
             LocalPlayer,
-            { autoHopEnabled = autoHopEnabled }
+            teleportInfo
         )
     end)
 end
@@ -106,7 +111,11 @@ task.spawn(function()
             if sid then
                 hop(sid)
             else
-                TeleportService:Teleport(PLACE_ID, LocalPlayer, { autoHopEnabled = autoHopEnabled })
+                -- nếu không tìm được server mới, vẫn teleport để giữ autoHopEnabled
+                TeleportService:Teleport(PLACE_ID, LocalPlayer, {
+                    autoHopEnabled = autoHopEnabled,
+                    visitedServers = visitedServers
+                })
             end
         end
     end
