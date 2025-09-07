@@ -1,4 +1,4 @@
--- Auto Server Hop + GUI On/Off (loop vô hạn, giữ trạng thái)
+-- Auto Server Hop + GUI On/Off + Hiển thị số server đã hop
 -- WARNING: Có thể vi phạm Roblox ToS nếu dùng trong game public. Dùng cẩn trọng.
 
 local TeleportService = game:GetService("TeleportService")
@@ -9,18 +9,21 @@ local HOP_DELAY = 13
 local MAX_SERVERS_FETCH = 100
 local PLACE_ID = game.PlaceId
 local LocalPlayer = Players.LocalPlayer
+local RESET_AFTER = 50 -- Reset visitedServers sau 50 server đã hop
 
 -- ========== TELEPORT DATA ==========
 local teleportData = TeleportService:GetLocalPlayerTeleportData() or {}
 local autoHopEnabled = teleportData.autoHopEnabled or false
 local visitedServers = teleportData.visitedServers or {}
-visitedServers[tostring(game.JobId)] = true -- đánh dấu server hiện tại đã đi
+visitedServers[tostring(game.JobId)] = true
+local hopCount = teleportData.hopCount or 0
 
 -- ========== GUI ==========
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutoHopGui"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Nút ON/OFF
 local Button = Instance.new("TextButton")
 Button.Size = UDim2.new(0, 150, 0, 50)
 Button.Position = UDim2.new(0.05, 0, 0.1, 0)
@@ -29,6 +32,16 @@ Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.TextScaled = true
 Button.Text = autoHopEnabled and "AutoHop: ON" or "AutoHop: OFF"
 Button.Parent = ScreenGui
+
+-- Label hiển thị số server đã hop
+local Label = Instance.new("TextLabel")
+Label.Size = UDim2.new(0, 150, 0, 30)
+Label.Position = UDim2.new(0.05, 0, 0.22, 0)
+Label.BackgroundTransparency = 1
+Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+Label.TextScaled = true
+Label.Text = "Servers hopped: " .. hopCount
+Label.Parent = ScreenGui
 
 Button.MouseButton1Click:Connect(function()
     autoHopEnabled = not autoHopEnabled
@@ -85,11 +98,22 @@ end
 local function hop(serverId)
     if not serverId then return end
     visitedServers[serverId] = true
+    hopCount = hopCount + 1
+    Label.Text = "Servers hopped: " .. hopCount
+
+    -- Reset visitedServers nếu đã hop đủ RESET_AFTER server
+    if hopCount >= RESET_AFTER then
+        visitedServers = {}
+        visitedServers[tostring(game.JobId)] = true
+        hopCount = 0
+        Label.Text = "Servers hopped: " .. hopCount
+    end
 
     -- truyền visitedServers và autoHopEnabled qua TeleportData
     local teleportInfo = {
         autoHopEnabled = autoHopEnabled,
-        visitedServers = visitedServers
+        visitedServers = visitedServers,
+        hopCount = hopCount
     }
 
     pcall(function()
@@ -111,10 +135,10 @@ task.spawn(function()
             if sid then
                 hop(sid)
             else
-                -- nếu không tìm được server mới, vẫn teleport để giữ autoHopEnabled
                 TeleportService:Teleport(PLACE_ID, LocalPlayer, {
                     autoHopEnabled = autoHopEnabled,
-                    visitedServers = visitedServers
+                    visitedServers = visitedServers,
+                    hopCount = hopCount
                 })
             end
         end
