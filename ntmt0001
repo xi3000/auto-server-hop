@@ -5,7 +5,7 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
-local HOP_DELAY = 20
+local HOP_DELAY = 13
 local MAX_SERVERS_FETCH = 100
 local PLACE_ID = game.PlaceId
 local LocalPlayer = Players.LocalPlayer
